@@ -26,8 +26,14 @@ export default function MainLayout({ children }) {
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-secondary text-white transition-all duration-300 flex flex-col`}>
-        <div className="p-4 flex items-center justify-between">
-          {sidebarOpen && <h1 className="font-bold text-lg">Axyra</h1>}
+        <div className="p-4 flex items-center justify-between border-b border-blue-700">
+          {sidebarOpen && (
+            <div className="flex items-center gap-3">
+              <img src="/favicon.ico" alt="Axyra Logo" className="w-8 h-8" />
+              <h1 className="font-bold text-lg">Axyra</h1>
+            </div>
+          )}
+          {!sidebarOpen && <img src="/favicon.ico" alt="Axyra" className="w-8 h-8 mx-auto" />}
           <button onClick={() => setSidebarOpen(!sidebarOpen)}>
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>

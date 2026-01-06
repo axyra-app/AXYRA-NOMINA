@@ -49,9 +49,7 @@ export default function LandingPage() {
       <nav className="fixed w-full bg-white shadow-sm z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg">
-              <FileText className="text-white" size={24} />
-            </div>
+            <img src="/favicon.ico" alt="Axyra Logo" className="w-10 h-10" />
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               Axyra
             </h1>
