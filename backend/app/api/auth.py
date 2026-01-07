@@ -70,14 +70,21 @@ async def signup(request: SignupRequest):
         
         firebase = get_firebase()
         
-        # Crear usuario en Firebase
-        user = firebase.create_user(
+        # Crear usuario en Firebase Authentication
+        user = firebase.register_user_auth(
             email=request.email,
             password=request.password,
             display_name=request.display_name
         )
         
         uid = user["uid"]
+        
+        # Inicializar estructura de datos del usuario en Realtime Database
+        firebase.initialize_user_data(
+            uid=uid,
+            email=request.email,
+            display_name=request.display_name
+        )
         
         # Crear tokens JWT
         access_token = create_access_token(uid, request.email)

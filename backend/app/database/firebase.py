@@ -272,6 +272,103 @@ class FirebaseManager:
             logger.error(f"[ERROR] Error getting user by email: {str(e)}")
             raise
     
+    def register_user_auth(self, email: str, password: str, display_name: str) -> Dict:
+        """
+        Crea un nuevo usuario en Firebase Authentication
+        
+        Args:
+            email: Email del usuario
+            password: Contraseña sin encriptar
+            display_name: Nombre completo del usuario
+            
+        Returns:
+            Diccionario con uid y datos del usuario
+        """
+        try:
+            if self._mock_mode:
+                logger.debug("[MOCK] Creating user in Firebase Auth")
+                return {"uid": email.split("@")[0], "email": email, "display_name": display_name}
+            
+            # Crear usuario en Firebase Authentication
+            user = self.auth.create_user(
+                email=email,
+                password=password,
+                display_name=display_name
+            )
+            
+            logger.info(f"[OK] User created in Firebase Auth: {email} (UID: {user.uid})")
+            return {
+                "uid": user.uid,
+                "email": user.email,
+                "display_name": user.display_name
+            }
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Error creating user in Firebase Auth: {str(e)}")
+            raise
+    
+    def initialize_user_data(self, uid: str, email: str, display_name: str) -> bool:
+        """
+        Inicializa la estructura de datos de un nuevo usuario en Realtime Database
+        
+        Args:
+            uid: UID del usuario
+            email: Email del usuario
+            display_name: Nombre del usuario
+            
+        Returns:
+            True si fue exitoso
+        """
+        try:
+            # Estructura de configuración por defecto
+            default_config = {
+                "company": {
+                    "name": "Mi Empresa",
+                    "rfc": "",
+                    "address": "",
+                    "phone": "",
+                    "email": email
+                },
+                "hours": {
+                    "daily_hours": 8,
+                    "weekly_hours": 40,
+                    "hourly_rate": 0,
+                    "overtime_multiplier": 1.5
+                },
+                "payroll": {
+                    "payment_method": "transfer",
+                    "payment_day": 15,
+                    "currency": "MXN",
+                    "fiscal_regime": ""
+                }
+            }
+            
+            # Crear datos base del usuario
+            self.write_data(f"users/{uid}", {
+                "email": email,
+                "display_name": display_name,
+                "uid": uid,
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat(),
+                "is_active": True,
+                "configuration": default_config
+            })
+            
+            # Crear colecciones vacías
+            self.write_data(f"users/{uid}/employees", {})
+            self.write_data(f"users/{uid}/hours", {})
+            self.write_data(f"users/{uid}/payroll", {})
+            self.write_data(f"users/{uid}/logs", {
+                "_initialized": datetime.now().isoformat()
+            })
+            
+            logger.info(f"[OK] User data structure initialized: {email} (UID: {uid})")
+            return True
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Error initializing user data: {str(e)}")
+            raise
+    
     def create_user(self, email: str, user_data: Dict) -> str:
         """
         Crea nuevo usuario en Realtime Database
