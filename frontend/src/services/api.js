@@ -1,11 +1,13 @@
 import axios from 'axios'
 
-// En producción, si no hay VITE_API_URL, usar una URL relativa (mismo dominio)
+// En producción, usar una URL relativa para que funcione en el mismo dominio
 const API_URL = import.meta.env.VITE_API_URL || (
   typeof window !== 'undefined' && window.location.hostname === 'localhost'
     ? 'http://localhost:8000'
     : '/api'
 )
+
+console.log('[API] Usando URL:', API_URL)
 
 const api = axios.create({
   baseURL: API_URL,

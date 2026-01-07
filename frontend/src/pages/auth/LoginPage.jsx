@@ -191,11 +191,11 @@ export default function LoginPage() {
             </button>
           </p>
 
-          {/* Demo info */}
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-            <p className="font-semibold mb-2">📧 Cuenta de demostración:</p>
-            <p>Email: <span className="font-mono">demo@axyra.com</span></p>
-            <p>Password: <span className="font-mono">Demo@123456</span></p>
+          {/* Footer links */}
+          <div className="mt-6 pt-6 border-t border-gray-200 flex gap-4 justify-center text-xs text-gray-600">
+            <a href="/terms" className="hover:text-blue-600 transition">Términos y Condiciones</a>
+            <span>•</span>
+            <a href="/privacy" className="hover:text-blue-600 transition">Política de Privacidad</a>
           </div>
         </div>
       </div>

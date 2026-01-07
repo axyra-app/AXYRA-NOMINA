@@ -14,6 +14,8 @@ import EmployeeFormPage from './pages/employees/EmployeeFormPage'
 import HoursPage from './pages/hours/HoursPage'
 import PayrollPage from './pages/payroll/PayrollPage'
 import ConfigurationPage from './pages/configuration/ConfigurationPage'
+import TermsPage from './pages/legal/TermsPage'
+import PrivacyPage from './pages/legal/PrivacyPage'
 
 // Layout
 import MainLayout from './components/layout/MainLayout'
@@ -30,6 +32,8 @@ function AppContent() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
     
       {/* Protected routes */}
       <Route
