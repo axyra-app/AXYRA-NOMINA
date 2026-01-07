@@ -4,7 +4,7 @@ export const payrollService = {
   // Calcular nómina de un empleado
   calculateEmployee: async (clientId, employeeId, quincena, horas) => {
     const response = await api.post(
-      `/api/payroll/calculate/${employeeId}`,
+      `/payroll/calculate/${employeeId}`,
       { horas },
       {
         params: {
@@ -19,7 +19,7 @@ export const payrollService = {
   // Calcular lote de nóminas
   calculateBatch: async (clientId, quincena, horasBatch) => {
     const response = await api.post(
-      `/api/payroll/batch/${quincena}`,
+      `/payroll/batch/${quincena}`,
       { horas_batch: horasBatch },
       {
         params: { client_id: clientId }
@@ -31,7 +31,7 @@ export const payrollService = {
   // Obtener lote específico
   getBatch: async (clientId, quincena, batchId) => {
     const response = await api.get(
-      `/api/payroll/batch/${quincena}/${batchId}`,
+      `/payroll/batch/${quincena}/${batchId}`,
       {
         params: { client_id: clientId }
       }
@@ -42,7 +42,7 @@ export const payrollService = {
   // Actualizar estado del lote
   updateBatchStatus: async (clientId, quincena, batchId, newStatus) => {
     const response = await api.put(
-      `/api/payroll/batch/${quincena}/${batchId}/status/${newStatus}`,
+      `/payroll/batch/${quincena}/${batchId}/status/${newStatus}`,
       {},
       {
         params: { client_id: clientId }

@@ -1,21 +1,28 @@
 """
-Endpoints para gestión de horas trabajadas
+Endpoints para gestión de horas trabajadas con autenticación JWT
 """
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List, Dict
 from app.models.hours import HoursCreate, HoursUpdate, Hours
 from app.database.firebase import get_firebase
+from app.security_enhanced import get_current_user, UserContext
 from app.utils.validators import validar_periodo, validar_horas_trabajo
 from datetime import datetime
 import uuid
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/hours", tags=["hours"])
 
 
 @router.post("/", response_model=Hours, status_code=status.HTTP_201_CREATED)
-async def create_hours(hours: HoursCreate, client_id: str = Query(...)):
-    """Registra horas trabajadas para un empleado con validaciones"""
+async def create_hours(
+    hours: HoursCreate,
+    client_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user)
+):
+    """Registra horas trabajadas para un empleado con validaciones (requiere autenticación JWT)"""
     try:
         # Validar período
         periodo_valido, msg_periodo = validar_periodo(hours.quincena)
@@ -66,15 +73,18 @@ async def create_hours(hours: HoursCreate, client_id: str = Query(...)):
             "notas": hours.notas or "",
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
+            "created_by": current_user.uid,
         }
         
         path = f"clients/{client_id}/hours/{hours_id}"
         firebase.write_data(path, hours_data)
         
+        logger.info(f"Horas {hours_id} registradas por {current_user.email}")
         return Hours(**hours_data)
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error registrando horas: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Error registrando horas: {str(e)}"
@@ -82,9 +92,14 @@ async def create_hours(hours: HoursCreate, client_id: str = Query(...)):
 
 
 @router.get("/", response_model=List[Hours])
-async def list_hours(client_id: str = Query(...)):
-    """Lista todas las horas registradas de un cliente"""
+async def list_hours(
+    client_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user)
+):
+    """Lista todas las horas registradas de un cliente (requiere autenticación JWT)"""
     try:
+        logger.info(f"Usuario {current_user.email} listando horas del cliente {client_id}")
+        
         firebase = get_firebase()
         path = f"clients/{client_id}/hours"
         hours_data = firebase.read_data(path)
@@ -92,9 +107,17 @@ async def list_hours(client_id: str = Query(...)):
         if not hours_data:
             return []
         
-        hours_list = [Hours(**hour) for hour in hours_data.values()]
+        hours_list = []
+        if isinstance(hours_data, dict):
+            for hour_id, hour in hours_data.items():
+                if isinstance(hour, dict):
+                    try:
+                        hours_list.append(Hours(**hour))
+                    except Exception as e:
+                        logger.warning(f"Error parsing hours record {hour_id}: {str(e)}")
         return hours_list
     except Exception as e:
+        logger.error(f"Error listando horas: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -102,21 +125,30 @@ async def list_hours(client_id: str = Query(...)):
 
 
 @router.get("/{hours_id}", response_model=Hours)
-async def get_hours(hours_id: str, client_id: str = Query(...)):
-    """Obtiene un registro de horas"""
+async def get_hours(
+    hours_id: str,
+    client_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user)
+):
+    """Obtiene un registro de horas (requiere autenticación JWT)"""
     try:
+        logger.info(f"Usuario {current_user.email} obteniendo horas {hours_id}")
+        
         firebase = get_firebase()
         path = f"clients/{client_id}/hours/{hours_id}"
         hours_data = firebase.read_data(path)
         
-        if not hours_data:
+        if not hours_data or not isinstance(hours_data, dict):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Registro de horas no encontrado"
             )
         
         return Hours(**hours_data)
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error obteniendo horas: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -135,14 +167,17 @@ async def get_hours_by_employee_quincena(
         path = f"clients/{client_id}/hours"
         all_hours = firebase.read_data(path)
         
-        if not all_hours:
+        if not all_hours or not isinstance(all_hours, dict):
             return None
         
         # Filtrar por empleado y quincena
         for hours_id, hours_data in all_hours.items():
-            if (hours_data.get("employee_id") == employee_id and 
+            if isinstance(hours_data, dict) and (hours_data.get("employee_id") == employee_id and 
                 hours_data.get("quincena") == quincena):
-                return Hours(**hours_data)
+                try:
+                    return Hours(**hours_data)
+                except Exception as e:
+                    logger.warning(f"Error parsing hours record {hours_id}: {str(e)}")
         
         return None
     except Exception as e:

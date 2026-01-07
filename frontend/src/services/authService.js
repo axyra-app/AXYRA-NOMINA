@@ -3,7 +3,7 @@ import api from './api'
 export const authService = {
   // Registrar usuario
   signup: async (email, password, displayName) => {
-    const response = await api.post('/api/auth/signup', {
+    const response = await api.post('/auth/signup', {
       email,
       password,
       display_name: displayName,
@@ -13,7 +13,7 @@ export const authService = {
 
   // Verificar token
   verifyToken: async (token) => {
-    const response = await api.post('/api/auth/verify-token', null, {
+    const response = await api.post('/auth/verify-token', null, {
       params: { token }
     })
     return response.data
@@ -21,7 +21,7 @@ export const authService = {
 
   // Obtener usuario actual
   getCurrentUser: async (token) => {
-    const response = await api.get('/api/auth/me', {
+    const response = await api.get('/auth/me', {
       params: { token }
     })
     return response.data

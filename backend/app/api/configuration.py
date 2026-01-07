@@ -1,10 +1,14 @@
 """
-API Router para Configuraciones del Sistema
+API Router para Configuraciones del Sistema con autenticación JWT
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from app.models import CompanyConfig, HourConfiguration, ConfigurationUpdate, SystemSettings
 from app.database.firebase import get_firebase
+from app.security_enhanced import get_current_user, UserContext
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/config",
@@ -14,9 +18,14 @@ router = APIRouter(
 
 
 @router.get("/system")
-async def get_system_config(client_id: str = Query(...)):
-    """Obtiene la configuración completa del sistema"""
+async def get_system_config(
+    client_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user)
+):
+    """Obtiene la configuración completa del sistema (requiere autenticación JWT)"""
     try:
+        logger.info(f"Usuario {current_user.email} obteniendo configuración del sistema")
+        
         firebase = get_firebase()
         
         # Obtener configuración de empresa
@@ -46,15 +55,20 @@ async def get_system_config(client_id: str = Query(...)):
         }
         
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error obteniendo configuración: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
 @router.put("/company")
-async def update_company_config(config: CompanyConfig, client_id: str = Query(...)):
-    """Actualiza la configuración de la empresa"""
+async def update_company_config(
+    config: CompanyConfig,
+    client_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user)
+):
+    """Actualiza la configuración de la empresa (requiere autenticación JWT)"""
     try:
+        logger.info(f"Usuario {current_user.email} actualizando configuración de empresa")
+        
         firebase = get_firebase()
         
         config_data = {
@@ -65,9 +79,11 @@ async def update_company_config(config: CompanyConfig, client_id: str = Query(..
             "auxilio_transporte": config.auxilio_transporte,
             "descuento_salud_porcentaje": config.descuento_salud_porcentaje,
             "descuento_pension_porcentaje": config.descuento_pension_porcentaje,
+            "updated_by": current_user.uid,
         }
         
         firebase.write_data(f"clients/{client_id}/config/company", config_data)
+        logger.info(f"Configuración de empresa actualizada por {current_user.email}")
         
         return {
             "message": "Configuración de empresa actualizada correctamente",
@@ -75,13 +91,20 @@ async def update_company_config(config: CompanyConfig, client_id: str = Query(..
         }
         
     except Exception as e:
+        logger.error(f"Error actualizando configuración: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/hours")
-async def update_hours_config(config: HourConfiguration, client_id: str = Query(...)):
-    """Actualiza la configuración de horas y recargas"""
+async def update_hours_config(
+    config: HourConfiguration,
+    client_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user)
+):
+    """Actualiza la configuración de horas y recargas (requiere autenticación JWT)"""
     try:
+        logger.info(f"Usuario {current_user.email} actualizando configuración de horas")
+        
         firebase = get_firebase()
         from datetime import datetime
         
@@ -98,9 +121,11 @@ async def update_hours_config(config: HourConfiguration, client_id: str = Query(
             "valor_hora_ordinaria": config.valor_hora_ordinaria,
             "horas_por_config": horas_dict,
             "updated_at": str(datetime.now()),
+            "updated_by": current_user.uid,
         }
         
         firebase.write_data(f"clients/{client_id}/config/hours", config_data)
+        logger.info(f"Configuración de horas actualizada por {current_user.email}")
         
         return {
             "message": "Configuración de horas actualizada correctamente",
@@ -108,15 +133,19 @@ async def update_hours_config(config: HourConfiguration, client_id: str = Query(
         }
         
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error actualizando configuración: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error actualizando config: {str(e)}")
 
 
 @router.post("/reset-defaults")
-async def reset_defaults(client_id: str = Query(...)):
-    """Reinicia las configuraciones a valores por defecto"""
+async def reset_defaults(
+    client_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user)
+):
+    """Reinicia las configuraciones a valores por defecto (requiere autenticación JWT)"""
     try:
+        logger.info(f"Usuario {current_user.email} reiniciando configuración a defaults")
+        
         firebase = get_firebase()
         from datetime import datetime
         

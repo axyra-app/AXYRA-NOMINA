@@ -1,11 +1,12 @@
 """
-Endpoints de gestión de empleados
+Endpoints de gestión de empleados con autenticación JWT
 """
 
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List
 from app.models.employee import EmployeeCreate, EmployeeUpdate, Employee
 from app.database.firebase import get_firebase
+from app.security_enhanced import get_current_user, UserContext
 from app.utils.validators import (
     validar_cedula_colombiana,
     validar_nombre,
@@ -14,14 +15,22 @@ from app.utils.validators import (
 )
 from datetime import datetime
 import uuid
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/employees", tags=["employees"])
 
 
 @router.post("/", response_model=Employee, status_code=status.HTTP_201_CREATED)
-async def create_employee(employee: EmployeeCreate, client_id: str = Query(...)):
-    """Crea un nuevo empleado con validaciones"""
+async def create_employee(
+    employee: EmployeeCreate,
+    client_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user)
+):
+    """Crea un nuevo empleado con validaciones (requiere autenticación JWT)"""
     try:
+        logger.info(f"Usuario {current_user.email} creando empleado {employee.nombre}")
+        
         # Validar cédula
         cedula_valida, msg_cedula = validar_cedula_colombiana(employee.cedula)
         if not cedula_valida:
@@ -64,15 +73,18 @@ async def create_employee(employee: EmployeeCreate, client_id: str = Query(...))
             "deuda_consumos": employee.deuda_consumos,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
+            "created_by": current_user.uid,
         }
         
         path = f"clients/{client_id}/employees/{employee_id}"
         firebase.write_data(path, employee_data)
         
+        logger.info(f"Empleado {employee_id} creado por {current_user.email}")
         return Employee(**employee_data)
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error creando empleado: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Error creando empleado: {str(e)}"
@@ -80,19 +92,32 @@ async def create_employee(employee: EmployeeCreate, client_id: str = Query(...))
 
 
 @router.get("/", response_model=List[Employee])
-async def list_employees(client_id: str = Query(...)):
-    """Lista todos los empleados de un cliente"""
+async def list_employees(
+    client_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user)
+):
+    """Lista todos los empleados de un cliente (requiere autenticación JWT)"""
     try:
+        logger.info(f"Usuario {current_user.email} listando empleados del cliente {client_id}")
+        
         firebase = get_firebase()
         path = f"clients/{client_id}/employees"
         employees_data = firebase.read_data(path)
         
-        if not employees_data:
+        if not employees_data or not isinstance(employees_data, dict):
             return []
         
-        employees = [Employee(**employee) for employee in employees_data.values()]
+        employees = []
+        for emp_id, employee in employees_data.items():
+            if isinstance(employee, dict):
+                try:
+                    employees.append(Employee(**employee))
+                except Exception as e:
+                    logger.warning(f"Error parsing employee {emp_id}: {str(e)}")
+        
         return employees
     except Exception as e:
+        logger.error(f"Error listando empleados: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -100,9 +125,15 @@ async def list_employees(client_id: str = Query(...)):
 
 
 @router.get("/{employee_id}", response_model=Employee)
-async def get_employee(employee_id: str, client_id: str = Query(...)):
-    """Obtiene un empleado específico"""
+async def get_employee(
+    employee_id: str,
+    client_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user)
+):
+    """Obtiene un empleado específico (requiere autenticación JWT)"""
     try:
+        logger.info(f"Usuario {current_user.email} obteniendo empleado {employee_id}")
+        
         firebase = get_firebase()
         path = f"clients/{client_id}/employees/{employee_id}"
         employee_data = firebase.read_data(path)
@@ -114,7 +145,10 @@ async def get_employee(employee_id: str, client_id: str = Query(...)):
             )
         
         return Employee(**employee_data)
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error obteniendo empleado: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -125,10 +159,13 @@ async def get_employee(employee_id: str, client_id: str = Query(...)):
 async def update_employee(
     employee_id: str,
     employee_update: EmployeeUpdate,
-    client_id: str = Query(...)
+    client_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user)
 ):
-    """Actualiza un empleado"""
+    """Actualiza un empleado (requiere autenticación JWT)"""
     try:
+        logger.info(f"Usuario {current_user.email} actualizando empleado {employee_id}")
+        
         firebase = get_firebase()
         path = f"clients/{client_id}/employees/{employee_id}"
         
@@ -143,6 +180,7 @@ async def update_employee(
         # Actualizar solo campos proporcionados
         update_data = employee_update.dict(exclude_unset=True)
         update_data["updated_at"] = datetime.now().isoformat()
+        update_data["updated_by"] = current_user.uid
         
         # Si el tipo cambió a TEMPORAL, resetear deducciones
         employee_type = update_data.get("tipo", current.get("tipo"))
@@ -155,8 +193,12 @@ async def update_employee(
         
         # Obtener datos actualizados
         updated = firebase.read_data(path)
+        logger.info(f"Empleado {employee_id} actualizado por {current_user.email}")
         return Employee(**updated)
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error actualizando empleado: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -164,10 +206,15 @@ async def update_employee(
 
 
 @router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_employee(employee_id: str, client_id: str = Query(...)):
-    """Elimina un empleado"""
+async def delete_employee(
+    employee_id: str,
+    client_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user)
+):
+    """Elimina un empleado (requiere autenticación JWT)"""
     try:
-        firebase = get_firebase()
+        logger.info(f"Usuario {current_user.email} eliminando empleado {employee_id}")
+        
         path = f"clients/{client_id}/employees/{employee_id}"
         
         # Verificar que existe
@@ -179,8 +226,12 @@ async def delete_employee(employee_id: str, client_id: str = Query(...)):
             )
         
         firebase.delete_data(path)
+        logger.info(f"Empleado {employee_id} eliminado por {current_user.email}")
         return None
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error eliminando empleado: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)

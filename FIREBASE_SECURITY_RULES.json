@@ -1,46 +1,74 @@
 {
   "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth.uid === $uid",
+        ".write": "auth.uid === $uid && newData.child('client_id').val() !== null",
+        
+        ".validate": "newData.hasChildren(['email', 'client_id', 'nombre']) && auth.uid !== null",
+        
+        "uid": {".validate": "newData.val() === $uid"},
+        "email": {".validate": "newData.isString() && newData.val().contains('@') && newData.val().length >= 6"},
+        "nombre": {".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 255"},
+        "client_id": {".validate": "newData.isString() && newData.val().length > 0"},
+        "role": {".validate": "newData.val() === 'admin' || newData.val() === 'supervisor' || newData.val() === 'viewer'"},
+        "activo": {".validate": "newData.isBoolean()"},
+        "createdAt": {".validate": "newData.isNumber()"},
+        "lastLogin": {".validate": "newData.isNumber() || newData.val() === null"}
+      }
+    },
+
     "clients": {
       "$clientId": {
-        ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId",
-        ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid != null",
+        ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+        ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
 
         "employees": {
-          ".indexOn": ["cedula", "client_id", "createdAt"],
+          ".indexOn": ["cedula", "tipo", "createdAt", "activo"],
+          ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+          ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
           
           "$employeeId": {
-            ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId",
-            ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId",
+            ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+            ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
             
-            ".validate": "newData.hasChildren(['id', 'nombre', 'cedula', 'tipo', 'salario']) && newData.child('salario').val() > 0 && (newData.child('tipo').val() === 'FIJO' || newData.child('tipo').val() === 'TEMPORAL')",
+            ".validate": "newData.hasChildren(['id', 'nombre', 'cedula', 'tipo', 'salario']) && newData.child('salario').val() > 0 && (newData.child('tipo').val() === 'FIJO' || newData.child('tipo').val() === 'TEMPORAL') && newData.child('client_id').val() === $clientId",
             
-            "id": {".validate": "newData.isString()"},
-            "nombre": {".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 255"},
+            "id": {".validate": "newData.isString() && newData.val().length > 0"},
+            "nombre": {".validate": "newData.isString() && newData.val().length > 1 && newData.val().length <= 255"},
             "cedula": {".validate": "newData.isString() && newData.val().length >= 5 && newData.val().length <= 20"},
+            "email": {".validate": "newData.isString() && newData.val().contains('@') || newData.val() === null"},
             "tipo": {".validate": "newData.val() === 'FIJO' || newData.val() === 'TEMPORAL'"},
-            "salario": {".validate": "newData.isNumber() && newData.val() > 0"},
+            "salario": {".validate": "newData.isNumber() && newData.val() >= 1000"},
+            "cargo": {".validate": "newData.isString() || newData.val() === null"},
+            "departamento": {".validate": "newData.isString() || newData.val() === null"},
             "deuda_consumos": {".validate": "newData.isNumber() && newData.val() >= 0"},
             "deducir_salud": {".validate": "newData.isBoolean()"},
             "deducir_pension": {".validate": "newData.isBoolean()"},
             "deducir_auxilioTransporte": {".validate": "newData.isBoolean()"},
+            "activo": {".validate": "newData.isBoolean()"},
             "comentario": {".validate": "newData.isString() || newData.val() === null"},
             "client_id": {".validate": "newData.val() === $clientId"},
+            "createdBy": {".validate": "newData.isString()"},
             "createdAt": {".validate": "newData.isNumber()"},
-            "updatedAt": {".validate": "newData.isNumber()"}
+            "updatedBy": {".validate": "newData.isString() || newData.val() === null"},
+            "updatedAt": {".validate": "newData.isNumber() || newData.val() === null"}
           }
         },
 
         "hours": {
           ".indexOn": ["employee_id", "quincena", "fecha", "createdAt"],
+          ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+          ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
           
           "$hoursId": {
-            ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId",
-            ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId",
+            ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+            ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
             
-            ".validate": "newData.hasChildren(['id', 'employee_id', 'fecha', 'quincena']) && newData.child('horas_ordinarias').val() >= 0 && newData.child('recargo_nocturno').val() >= 0 && newData.child('valor_deuda').val() >= 0",
+            ".validate": "newData.hasChildren(['id', 'employee_id', 'fecha', 'quincena']) && newData.child('horas_ordinarias').val() >= 0 && newData.child('client_id').val() === $clientId",
             
-            "id": {".validate": "newData.isString()"},
-            "employee_id": {".validate": "newData.isString()"},
+            "id": {".validate": "newData.isString() && newData.val().length > 0"},
+            "employee_id": {".validate": "newData.isString() && newData.val().length > 0"},
             "fecha": {".validate": "newData.isString() && newData.val().length === 10"},
             "quincena": {".validate": "newData.isString() && newData.val().length === 7"},
             "horas_ordinarias": {".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 24"},
@@ -57,24 +85,28 @@
             "valor_deuda": {".validate": "newData.isNumber() && newData.val() >= 0"},
             "notas": {".validate": "newData.isString() || newData.val() === null"},
             "client_id": {".validate": "newData.val() === $clientId"},
+            "createdBy": {".validate": "newData.isString()"},
             "createdAt": {".validate": "newData.isNumber()"},
-            "updatedAt": {".validate": "newData.isNumber()"}
+            "updatedBy": {".validate": "newData.isString() || newData.val() === null"},
+            "updatedAt": {".validate": "newData.isNumber() || newData.val() === null"}
           }
         },
 
-        "payroll": {
-          ".indexOn": ["employee_id", "periodo", "createdAt"],
+        "payroll_history": {
+          ".indexOn": ["employee_id", "quincena", "createdAt"],
+          ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+          ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
           
           "$payrollId": {
-            ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId",
-            ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId",
+            ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+            ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
             
-            ".validate": "newData.hasChildren(['id', 'employee_id', 'quincena']) && newData.child('total_bruto').val() >= 0 && newData.child('neto_a_pagar').val() >= 0",
+            ".validate": "newData.hasChildren(['id', 'employee_id', 'quincena']) && newData.child('total_bruto').val() >= 0 && newData.child('neto_a_pagar').val() >= 0 && newData.child('client_id').val() === $clientId",
             
-            "id": {".validate": "newData.isString()"},
-            "employee_id": {".validate": "newData.isString()"},
-            "employee_name": {".validate": "newData.isString()"},
-            "cedula": {".validate": "newData.isString()"},
+            "id": {".validate": "newData.isString() && newData.val().length > 0"},
+            "employee_id": {".validate": "newData.isString() && newData.val().length > 0"},
+            "employee_name": {".validate": "newData.isString() && newData.val().length > 0"},
+            "cedula": {".validate": "newData.isString() && newData.val().length >= 5"},
             "tipo": {".validate": "newData.val() === 'FIJO' || newData.val() === 'TEMPORAL'"},
             "salario_base": {".validate": "newData.isNumber() && newData.val() > 0"},
             "quincena": {".validate": "newData.isString() && newData.val().length === 7"},
@@ -86,98 +118,121 @@
             "deuda": {".validate": "newData.isNumber() && newData.val() >= 0"},
             "neto_a_pagar": {".validate": "newData.isNumber() && newData.val() >= 0"},
             "detalle": {".validate": "newData.isString() || newData.val() === null"},
+            "estado": {".validate": "newData.val() === 'draft' || newData.val() === 'approved' || newData.val() === 'paid' || newData.val() === null"},
             "client_id": {".validate": "newData.val() === $clientId"},
-            "createdAt": {".validate": "newData.isNumber()"},
-            "updatedAt": {".validate": "newData.isNumber()"}
-          }
-        },
-
-        "payroll_batches": {
-          ".indexOn": ["quincena", "createdAt"],
-          
-          "$batchId": {
-            ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId",
-            ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId",
-            
-            ".validate": "newData.hasChildren(['id', 'quincena']) && newData.child('total_neto').val() >= 0 && newData.child('total_bruto').val() >= 0 && newData.child('cantidad_empleados').val() > 0",
-            
-            "id": {".validate": "newData.isString()"},
-            "quincena": {".validate": "newData.isString() && newData.val().length === 7"},
-            "total_neto": {".validate": "newData.isNumber() && newData.val() >= 0"},
-            "total_bruto": {".validate": "newData.isNumber() && newData.val() >= 0"},
-            "cantidad_empleados": {".validate": "newData.isNumber() && newData.val() > 0"},
-            "status": {".validate": "newData.val() === 'draft' || newData.val() === 'approved' || newData.val() === 'processed' || newData.val() === null"},
-            "client_id": {".validate": "newData.val() === $clientId"},
+            "createdBy": {".validate": "newData.isString()"},
             "createdAt": {".validate": "newData.isNumber()"},
             "approvedBy": {".validate": "newData.isString() || newData.val() === null"},
             "approvedAt": {".validate": "newData.isNumber() || newData.val() === null"}
           }
         },
 
+        "payroll_batches": {
+          ".indexOn": ["quincena", "estado", "createdAt"],
+          ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+          ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+          
+          "$quincena": {
+            ".indexOn": ["estado", "createdAt"],
+            ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+            ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+            
+            "$batchId": {
+              ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+              ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+              
+              ".validate": "newData.hasChildren(['id', 'quincena']) && newData.child('total_neto').val() >= 0 && newData.child('total_bruto').val() >= 0 && newData.child('cantidad_empleados').val() > 0 && newData.child('client_id').val() === $clientId",
+              
+              "id": {".validate": "newData.isString() && newData.val().length > 0"},
+              "quincena": {".validate": "newData.isString() && newData.val().length === 7"},
+              "total_neto": {".validate": "newData.isNumber() && newData.val() >= 0"},
+              "total_bruto": {".validate": "newData.isNumber() && newData.val() >= 0"},
+              "cantidad_empleados": {".validate": "newData.isNumber() && newData.val() > 0"},
+              "estado": {".validate": "newData.val() === 'draft' || newData.val() === 'approved' || newData.val() === 'processed' || newData.val() === 'paid'"},
+              "client_id": {".validate": "newData.val() === $clientId"},
+              "createdBy": {".validate": "newData.isString()"},
+              "createdAt": {".validate": "newData.isNumber()"},
+              "approvedBy": {".validate": "newData.isString() || newData.val() === null"},
+              "approvedAt": {".validate": "newData.isNumber() || newData.val() === null"},
+              "processedBy": {".validate": "newData.isString() || newData.val() === null"},
+              "processedAt": {".validate": "newData.isNumber() || newData.val() === null"}
+            }
+          }
+        },
+
         "config": {
-          ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId",
-          ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId",
+          ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+          ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
           
           "company": {
             ".validate": "newData.hasChildren(['nombre']) || newData.val() === null",
-            "nombre": {".validate": "newData.isString() && newData.val().length > 0"},
-            "nit": {".validate": "newData.isString() || newData.val() === null"},
+            "nombre": {".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 255"},
+            "nit": {".validate": "newData.isString() && newData.val().length >= 5 || newData.val() === null"},
             "direccion": {".validate": "newData.isString() || newData.val() === null"},
-            "telefono": {".validate": "newData.isString() || newData.val() === null"},
-            "email": {".validate": "newData.isString() || newData.val() === null"},
+            "ciudad": {".validate": "newData.isString() || newData.val() === null"},
+            "telefono": {".validate": "newData.isString() && newData.val().length >= 7 || newData.val() === null"},
+            "email": {".validate": "newData.isString() && newData.val().contains('@') || newData.val() === null"},
             "logo": {".validate": "newData.isString() || newData.val() === null"},
+            "updatedBy": {".validate": "newData.isString()"},
             "updatedAt": {".validate": "newData.isNumber()"}
           },
 
           "hours": {
             ".validate": "newData.hasChildren(['quincena_inicio']) || newData.val() === null",
             "quincena_inicio": {".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 31"},
-            "horas_diarias": {".validate": "newData.isNumber() && newData.val() > 0"},
+            "horas_diarias": {".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 24"},
+            "horas_semanales": {".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 168"},
+            "valor_hora_ordinaria": {".validate": "newData.isNumber() && newData.val() > 0"},
             "valor_hora_dominical": {".validate": "newData.isNumber() && newData.val() > 0"},
+            "actualizar_automatico": {".validate": "newData.isBoolean()"},
+            "updatedBy": {".validate": "newData.isString()"},
             "updatedAt": {".validate": "newData.isNumber()"}
           },
 
           "deductions": {
-            ".validate": "newData.isString() || newData.val() === null",
+            ".validate": "newData.hasChildren(['salud_porcentaje']) || newData.val() === null",
             "salud_porcentaje": {".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"},
             "pension_porcentaje": {".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"},
             "auxilioTransporte_valor": {".validate": "newData.isNumber() && newData.val() >= 0"},
+            "fondo_solidario_porcentaje": {".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"},
+            "updatedBy": {".validate": "newData.isString()"},
             "updatedAt": {".validate": "newData.isNumber()"}
+          },
+
+          "holidays": {
+            "$year": {
+              ".validate": "newData.isNumber() || newData.val() === null"
+            }
           }
         },
 
         "audit_logs": {
           ".indexOn": ["timestamp", "action", "user_id"],
+          ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+          ".write": "false",
           
           "$logId": {
-            ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId",
-            ".write": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && newData.child('user_id').val() === auth.uid",
+            ".read": "root.child('users').child(auth.uid).child('client_id').val() === $clientId && auth.uid !== null",
+            ".write": "false",
             
-            ".validate": "newData.hasChildren(['action', 'timestamp', 'user_id', 'resource_type'])",
+            ".validate": "newData.hasChildren(['action', 'timestamp', 'user_id', 'resource_type', 'client_id'])",
             
-            "action": {".validate": "newData.val() === 'create' || newData.val() === 'update' || newData.val() === 'delete'"},
+            "id": {".validate": "newData.isString()"},
+            "action": {".validate": "newData.val() === 'CREATE' || newData.val() === 'UPDATE' || newData.val() === 'DELETE' || newData.val() === 'READ'"},
             "timestamp": {".validate": "newData.isNumber()"},
-            "user_id": {".validate": "newData.val() === auth.uid"},
-            "resource_type": {".validate": "newData.val() === 'employee' || newData.val() === 'hours' || newData.val() === 'payroll' || newData.val() === 'config'"},
-            "resource_id": {".validate": "newData.isString()"},
+            "user_id": {".validate": "newData.isString()"},
+            "user_email": {".validate": "newData.isString()"},
+            "resource_type": {".validate": "newData.val() === 'employee' || newData.val() === 'hours' || newData.val() === 'payroll' || newData.val() === 'config' || newData.val() === 'user'"},
+            "resource_id": {".validate": "newData.isString() || newData.val() === null"},
+            "old_value": {".validate": "newData.isString() || newData.val() === null"},
+            "new_value": {".validate": "newData.isString() || newData.val() === null"},
             "changes": {".validate": "newData.isString() || newData.val() === null"},
+            "status": {".validate": "newData.val() === 'success' || newData.val() === 'error'"},
+            "error_message": {".validate": "newData.isString() || newData.val() === null"},
+            "ip_address": {".validate": "newData.isString() || newData.val() === null"},
             "client_id": {".validate": "newData.val() === $clientId"}
           }
         }
-      }
-    },
-
-    "users": {
-      "$uid": {
-        ".read": "auth.uid === $uid",
-        ".write": "auth.uid === $uid",
-        
-        ".validate": "newData.hasChildren(['email', 'client_id'])",
-        
-        "email": {".validate": "newData.isString() && newData.val().contains('@')"},
-        "client_id": {".validate": "newData.isString()"},
-        "role": {".validate": "newData.val() === 'admin' || newData.val() === 'supervisor' || newData.val() === 'viewer'"},
-        "createdAt": {".validate": "newData.isNumber()"}
       }
     },
 

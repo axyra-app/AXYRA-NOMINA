@@ -1,10 +1,82 @@
-# 📊 Sistema de Nómina Axyra - Web
+# Sistema de Nómina Axyra
 
-**Versión:** 2.0.0  
-**Estado:** ✅ Production Ready  
-**Última actualización:** Enero 6, 2026
+**Estado:** Backend Ready | Frontend Ready | Firebase Rules Deployed  
+**Versión:** 2.1.0
 
-Un sistema completo de gestión de nómina con backend en FastAPI y frontend en React, desplegable en Vercel.
+Sistema de gestión de nómina: FastAPI + React + Firebase
+
+## Inicio Rápido
+
+1. **Lee** [INICIO.md](INICIO.md) - 3 pasos simples
+
+2. **Descarga** `serviceAccountKey.json` desde Firebase Console y coloca en `backend/`
+
+3. **Ejecuta:**
+```bash
+setup-dev.bat          # Windows
+# O
+.\setup-dev.ps1        # PowerShell
+```
+
+4. **Inicia desarrollo:**
+```bash
+# Terminal 1
+cd backend && python main.py
+
+# Terminal 2
+cd frontend && npm run dev
+```
+
+## Documentación
+
+- **[INICIO.md](INICIO.md)** - Comienzo rápido
+- **[CONFIGURACION.md](CONFIGURACION.md)** - Detalles técnicos y setup
+
+## Endpoints Principales
+
+**Autenticación:**
+- `POST /auth/signup` - Registrar
+- `POST /auth/login` - Iniciar sesión
+
+**Empleados:**
+- `GET /employees` - Listar
+- `POST /employees` - Crear
+- `PUT /employees/{id}` - Actualizar
+
+**Horas:**
+- `GET /hours` - Listar
+- `POST /hours` - Registrar
+
+**Nómina:**
+- `GET /payroll` - Historial
+- `POST /payroll/calculate` - Calcular
+
+Todos requieren JWT token en header: `Authorization: Bearer <token>`
+
+## Desarrollo
+
+```bash
+# Tests
+python test_endpoints.py
+
+# Backend logs
+# Ver en: backend/logs/app.log
+
+# Frontend dev
+npm run dev    # http://localhost:5173
+```
+
+### Opción Rápida (Recomendado)
+```bash
+# Ejecutar setup automático
+setup-dev.bat  # Windows Batch
+.\setup-dev.ps1  # O PowerShell
+```
+
+### Documentación de Inicio
+- **📖 Empieza aquí:** [README_INICIO_RAPIDO.md](README_INICIO_RAPIDO.md) - 5 min
+- **📋 Índice de docs:** [DOCUMENTACION_INDEX.md](DOCUMENTACION_INDEX.md) - Todas las guías
+- **✅ Checklist:** [LISTA_VERIFICACION.md](LISTA_VERIFICACION.md) - Paso a paso
 
 ---
 

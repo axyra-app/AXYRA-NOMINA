@@ -1,147 +1,422 @@
-"""
-Gestor de Firebase
-Autenticación y base de datos en tiempo real
+﻿"""
+[DB] GESTOR AVANZADO DE FIREBASE
+Autenticacion, base de datos realtime y operaciones complejas
 """
 
 import firebase_admin
 from firebase_admin import credentials, db, auth
 from app.config.settings import settings
 import os
-from typing import Optional, Dict, Any
+import json
+from typing import Optional, Dict, Any, List
+import logging
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 class FirebaseManager:
-    """Gestor centralizado de Firebase"""
+    """
+    Gestor centralizado y singleton de Firebase
+    Maneja autenticacion, lectura/escritura de datos y operaciones avanzadas
+    """
     
     _instance = None
+    _initialized = False
+    _mock_mode = False
     
     def __new__(cls):
-        """Patrón Singleton para una única instancia"""
+        """Patron Singleton: una unica instancia"""
         if cls._instance is None:
             cls._instance = super(FirebaseManager, cls).__new__(cls)
-            cls._instance._initialized = False
         return cls._instance
     
     def __init__(self):
         """Inicializa Firebase una sola vez"""
         if self._initialized:
             return
-            
+        
+        logger.info("[FIREBASE] Initializing Firebase Manager...")
+        self._init_firebase()
+        self._initialized = True
+    
+    def _init_firebase(self):
+        """Logica de inicializacion de Firebase"""
         try:
-            # Verificar si Firebase ya está inicializado
-            if not firebase_admin._apps:
-                cred_path = settings.FIREBASE_CREDENTIALS_PATH
-                
-                # Soportar tanto ruta relativa como absoluta
-                if not os.path.exists(cred_path):
-                    # Intentar en el directorio actual
-                    cred_path = os.path.join(os.getcwd(), cred_path)
-                
-                if os.path.exists(cred_path):
-                    cred = credentials.Certificate(cred_path)
-                    firebase_admin.initialize_app(cred, {
-                        'databaseURL': settings.FIREBASE_DATABASE_URL
-                    })
+            # Verificar si Firebase ya esta inicializado
+            if firebase_admin._apps:
+                logger.info("[OK] Firebase already initialized")
+                self.db = db
+                self.auth = auth
+                self._mock_mode = False
+                return
+            
+            cred = self._load_credentials()
+            db_url = settings.get_database_url()
+            
+            if not db_url:
+                logger.error("[ERROR] FIREBASE_DATABASE_URL not configured in .env")
+                if settings.DEBUG:
+                    logger.warning("[WARN] Firebase in MOCK mode (development)")
+                    self._mock_mode = True
                 else:
-                    # En modo desarrollo, continuar sin Firebase si no existe el archivo
-                    if settings.DEBUG:
-                        print(f"⚠️  WARNING: Firebase credentials not found at {cred_path}")
-                        print("   Ejecutando en modo MOCK para desarrollo")
-                        self._mock_mode = True
-                    else:
-                        raise FileNotFoundError(
-                            f"Firebase credentials file not found: {cred_path}"
-                        )
+                    raise Exception("FIREBASE_DATABASE_URL required in .env")
+                return
             
-            self._initialized = True
-            self._mock_mode = False
-            self.db = db
-            self.auth = auth
-            
-        except Exception as e:
-            if settings.DEBUG:
-                print(f"⚠️  WARNING: Firebase initialization error: {str(e)}")
-                print("   Ejecutando en modo MOCK para desarrollo")
+            if cred:
+                logger.info(f"[INFO] Initializing Firebase with URL: {db_url}")
+                firebase_admin.initialize_app(cred, {
+                    'databaseURL': db_url
+                })
+                logger.info("[OK] Firebase initialized successfully")
+                self.db = db
+                self.auth = auth
+                self._mock_mode = False
+            elif settings.DEBUG:
+                logger.warning("[WARN] Firebase in MOCK mode (credentials not found)")
                 self._mock_mode = True
-                self._initialized = True
             else:
-                raise Exception(f"Error initializing Firebase: {str(e)}")
+                raise Exception("Firebase credentials required in production")
+                
+        except Exception as e:
+            logger.error(f"[ERROR] Error initializing Firebase: {str(e)}")
+            logger.error("[ERROR] Check: 1) serviceAccountKey.json exists, 2) FIREBASE_DATABASE_URL in .env, 3) Firebase permissions")
+            if not settings.DEBUG:
+                raise
+            self._mock_mode = True
+            logger.warning("[WARN] Continuing in MOCK mode")
     
-    def get_user_by_email(self, email: str) -> Optional[Dict]:
-        """Obtiene un usuario por email"""
-        try:
-            user = self.auth.get_user_by_email(email)
-            return {
-                "uid": user.uid,
-                "email": user.email,
-                "display_name": user.display_name,
-                "disabled": user.disabled,
-            }
-        except auth.AuthError as e:
-            return None
+    def _load_credentials(self) -> Optional[credentials.Certificate]:
+        """Carga credenciales de multiples fuentes"""
+        
+        # Opcion 1: Variable de entorno JSON
+        if settings.FIREBASE_CREDENTIALS_JSON:
+            try:
+                cred_dict = json.loads(settings.FIREBASE_CREDENTIALS_JSON)
+                logger.info("[OK] Credentials loaded from FIREBASE_CREDENTIALS_JSON")
+                return credentials.Certificate(cred_dict)
+            except json.JSONDecodeError:
+                logger.warning("[ERROR] FIREBASE_CREDENTIALS_JSON invalid JSON")
+        
+        # Opcion 2: Archivo local
+        cred_path = settings.FIREBASE_CREDENTIALS_PATH
+        if not os.path.exists(cred_path):
+            cred_path = os.path.join(os.getcwd(), cred_path)
+        
+        if os.path.exists(cred_path):
+            try:
+                logger.info(f"[OK] Credentials loaded from {cred_path}")
+                return credentials.Certificate(cred_path)
+            except Exception as e:
+                logger.warning(f"[ERROR] Error loading credentials from file: {str(e)}")
+        
+        return None
     
-    def create_user(self, email: str, password: str, display_name: str = "") -> Dict:
-        """Crea un nuevo usuario"""
-        try:
-            user = self.auth.create_user(
-                email=email,
-                password=password,
-                display_name=display_name
-            )
-            return {
-                "uid": user.uid,
-                "email": user.email,
-                "display_name": user.display_name,
-            }
-        except auth.AuthError as e:
-            raise Exception(f"Error creating user: {str(e)}")
+    # ============ OPERACIONES DE LECTURA ============
     
-    def delete_user(self, uid: str) -> bool:
-        """Elimina un usuario"""
+    def read_data(self, path: str) -> Dict:
+        """
+        Lee datos de la base de datos
+        
+        Args:
+            path: Ruta en la base de datos
+            
+        Returns:
+            Diccionario con los datos o diccionario vacio si no existe
+        """
         try:
-            self.auth.delete_user(uid)
-            return True
-        except auth.AuthError as e:
-            raise Exception(f"Error deleting user: {str(e)}")
+            if self._mock_mode:
+                logger.debug(f"[MOCK] Reading from {path}")
+                return {}
+            
+            ref = self.db.reference(path)
+            snapshot = ref.get()
+            value = snapshot.val() if snapshot.val() is not None else {}
+            
+            logger.debug(f"[OK] Data read from {path}: {type(value).__name__}")
+            return value if value is not None else {}
+            
+        except AttributeError as e:
+            logger.warning(f"[WARN] Path '{path}' may not exist or Firebase not initialized properly: {str(e)}")
+            return {}
+        except Exception as e:
+            logger.error(f"[ERROR] Error reading {path}: {str(e)}")
+            if self._mock_mode:
+                return {}
+            raise
+    
+    # ============ OPERACIONES DE ESCRITURA ============
     
     def write_data(self, path: str, data: Dict) -> bool:
-        """Escribe datos en la base de datos"""
+        """
+        Escribe datos en la base de datos (sobrescribe)
+        
+        Args:
+            path: Ruta en la base de datos
+            data: Datos a escribir
+            
+        Returns:
+            True si fue exitoso
+        """
         try:
+            if self._mock_mode:
+                logger.debug(f"[MOCK] Writing to {path}")
+                return True
+            
             self.db.reference(path).set(data)
+            logger.info(f"[OK] Data written to {path}")
             return True
+            
         except Exception as e:
-            raise Exception(f"Error writing to database: {str(e)}")
-    
-    def read_data(self, path: str) -> Optional[Dict]:
-        """Lee datos de la base de datos"""
-        try:
-            data = self.db.reference(path).get()
-            return data.val() if data else None
-        except Exception as e:
-            # 404 y otros errores se manejan como datos no encontrados
-            # No es un error de servidor, simplemente no hay datos
-            if "404" in str(e) or "Not Found" in str(e):
-                return None
-            # Solo lanzar excepción para errores reales
-            raise Exception(f"Error reading from database: {str(e)}")
+            logger.error(f"[ERROR] Error writing to {path}: {str(e)}")
+            raise
     
     def update_data(self, path: str, data: Dict) -> bool:
-        """Actualiza datos en la base de datos"""
+        """
+        Actualiza datos (merge con existentes)
+        
+        Args:
+            path: Ruta en la base de datos
+            data: Datos a actualizar
+            
+        Returns:
+            True si fue exitoso
+        """
         try:
+            if self._mock_mode:
+                logger.debug(f"[MOCK] Updating {path}")
+                return True
+            
             self.db.reference(path).update(data)
+            logger.info(f"[OK] Data updated at {path}")
             return True
+            
         except Exception as e:
-            raise Exception(f"Error updating database: {str(e)}")
+            logger.error(f"[ERROR] Error updating {path}: {str(e)}")
+            raise
+    
+    # ============ OPERACIONES DE ELIMINACION ============
     
     def delete_data(self, path: str) -> bool:
-        """Elimina datos de la base de datos"""
+        """
+        Elimina datos de la base de datos
+        
+        Args:
+            path: Ruta en la base de datos
+            
+        Returns:
+            True si fue exitoso
+        """
         try:
+            if self._mock_mode:
+                logger.debug(f"[MOCK] Deleting {path}")
+                return True
+            
             self.db.reference(path).delete()
+            logger.info(f"[OK] Data deleted from {path}")
             return True
+            
         except Exception as e:
-            raise Exception(f"Error deleting from database: {str(e)}")
+            logger.error(f"[ERROR] Error deleting {path}: {str(e)}")
+            raise
+    
+    # ============ OPERACIONES BATCH ============
+    
+    def batch_write(self, operations: List[Dict[str, Any]]) -> bool:
+        """
+        Realiza multiples operaciones en batch
+        
+        Args:
+            operations: Lista de dict con {'path': path, 'operation': 'set'|'update'|'delete', 'data': dict}
+            
+        Returns:
+            True si fue exitoso
+        """
+        try:
+            if self._mock_mode:
+                logger.debug(f"[MOCK] Batch with {len(operations)} operations")
+                return True
+            
+            updates = {}
+            for op in operations:
+                path = op.get('path')
+                operation = op.get('operation', 'set')
+                data = op.get('data', {})
+                
+                if operation == 'delete':
+                    updates[path] = None
+                else:  # 'set' or 'update'
+                    updates[path] = data
+            
+            self.db.reference().update(updates)
+            logger.info(f"[OK] Batch of {len(operations)} operations completed")
+            return True
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Error in batch write: {str(e)}")
+            raise
+    
+    # ============ OPERACIONES ESPECIALES DE USUARIO ============
+    
+    def find_user_by_email(self, email: str) -> Optional[Dict]:
+        """Busca usuario por email"""
+        try:
+            users = self.read_data("users")
+            if users:
+                for user_id, user_data in users.items():
+                    if user_data.get("email") == email:
+                        return user_data
+            return None
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Error getting user by email: {str(e)}")
+            raise
+    
+    def create_user(self, email: str, user_data: Dict) -> str:
+        """
+        Crea nuevo usuario en Realtime Database
+        
+        Args:
+            email: Email del usuario
+            user_data: Datos del usuario
+            
+        Returns:
+            UID del usuario creado
+        """
+        try:
+            uid = user_data.get("uid", email.split("@")[0])
+            self.write_data(f"users/{uid}", {
+                **user_data,
+                "created_at": datetime.now().isoformat()
+            })
+            logger.info(f"[OK] User created: {email}")
+            return uid
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Error creating user: {str(e)}")
+            raise
+    
+    def get_user_by_uid(self, uid: str) -> Optional[Dict]:
+        """Obtiene usuario por UID"""
+        try:
+            return self.read_data(f"users/{uid}")
+        except Exception as e:
+            logger.error(f"[ERROR] Error getting user by UID: {str(e)}")
+            raise
+    
+    def update_user(self, uid: str, updates: Dict) -> bool:
+        """Actualiza datos del usuario"""
+        try:
+            updates["updated_at"] = datetime.now().isoformat()
+            return self.update_data(f"users/{uid}", updates)
+        except Exception as e:
+            logger.error(f"[ERROR] Error updating user: {str(e)}")
+            raise
+    
+    # ============ OPERACIONES DE PAGINACION ============
+    
+    def read_paginated(self, path: str, limit: int = 50, offset: int = 0) -> Dict:
+        """
+        Lee datos con paginacion
+        
+        Args:
+            path: Ruta en la base de datos
+            limit: Cantidad de registros
+            offset: Cantidad a saltar
+            
+        Returns:
+            Diccionario con 'data' y 'metadata'
+        """
+        try:
+            if self._mock_mode:
+                return {"data": [], "total": 0, "limit": limit, "offset": offset}
+            
+            all_data = self.read_data(path) or {}
+            
+            # Convertir a lista si es dict
+            if isinstance(all_data, dict):
+                items = list(all_data.items())
+            else:
+                items = all_data if isinstance(all_data, list) else []
+            
+            total = len(items)
+            paginated = items[offset:offset + limit]
+            
+            return {
+                "data": paginated,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "pages": (total + limit - 1) // limit
+            }
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Error in paginated read: {str(e)}")
+            raise
+    
+    # ============ OPERACIONES DE SEGURIDAD ============
+    
+    def set_user_claims(self, uid: str, claims: Dict) -> bool:
+        """
+        Asigna custom claims a un usuario (requiere Admin SDK)
+        
+        Args:
+            uid: UID del usuario
+            claims: Dict con claims a asignar
+            
+        Returns:
+            True si fue exitoso
+        """
+        try:
+            if self._mock_mode:
+                logger.debug(f"[MOCK] Setting claims for {uid}")
+                return True
+            
+            self.auth.set_custom_user_claims(uid, claims)
+            logger.info(f"[OK] Custom claims set for user {uid}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Error setting user claims: {str(e)}")
+            raise
+    
+    # ============ OPERACIONES DE SALUD ============
+    
+    def health_check(self) -> bool:
+        """
+        Verifica conexion a Firebase
+        
+        Returns:
+            True si esta conectado, False si es mock
+        """
+        try:
+            if self._mock_mode:
+                logger.debug("[MOCK] Health check performed")
+                return False
+            
+            # Intento de lectura simple
+            self.db.reference(".info/connected").get()
+            logger.info("[OK] Firebase health check passed")
+            return True
+            
+        except Exception as e:
+            logger.error(f"[WARN] Firebase health check failed: {str(e)}")
+            return False
+
+
+# ============ SINGLETON GLOBAL ============
+
+_firebase_instance = None
 
 
 def get_firebase() -> FirebaseManager:
-    """Obtiene la instancia de Firebase"""
-    return FirebaseManager()
+    """
+    Obtiene la instancia global de FirebaseManager
+    
+    Returns:
+        Instancia singleton de FirebaseManager
+    """
+    global _firebase_instance
+    if _firebase_instance is None:
+        _firebase_instance = FirebaseManager()
+    return _firebase_instance

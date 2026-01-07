@@ -1,17 +1,20 @@
 """
-Endpoints de cálculo y gestión de nóminas
+Endpoints de cálculo y gestión de nóminas con autenticación JWT
 """
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List, Dict
 from app.models.payroll import PayrollCalculation, PayrollBatch
 from app.models.hours import Hours
 from app.business.calculations import PayrollCalculator
 from app.database.firebase import get_firebase
+from app.security_enhanced import get_current_user, UserContext
 from app.utils.validators import validar_periodo
 from datetime import datetime
 import uuid
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/payroll", tags=["payroll"])
 
 
@@ -20,19 +23,23 @@ async def calculate_employee_payroll(
     employee_id: str,
     periodo: str,
     client_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user)
 ):
     """
-    Calcula la nómina de un empleado específico en un período con validaciones
+    Calcula la nómina de un empleado específico en un período con validaciones (requiere autenticación JWT)
 
     Args:
         client_id: ID del cliente
         employee_id: ID del empleado
         periodo: Período (YYYY-MM)
+        current_user: Usuario autenticado
 
     Returns:
         dict: Cálculo completo de la nómina
     """
     try:
+        logger.info(f"Usuario {current_user.email} calculando nómina para {employee_id} período {periodo}")
+        
         # Validar período
         periodo_valido, msg_periodo = validar_periodo(periodo)
         if not periodo_valido:
@@ -97,6 +104,8 @@ async def calculate_employee_payroll(
 
         # Calcular nómina
         payroll = calculator.calcular_nomina(employee, horas_empleado, periodo)
+        
+        logger.info(f"Nómina calculada para {employee_id} por {current_user.email}")
 
         return {
             "success": True,
@@ -117,19 +126,23 @@ async def calculate_batch_payroll(
     client_id: str = Query(...),
     periodo: str = Query(...),
     employee_ids: List[str] = Query(None),  # Si es None, calcula para todos
+    current_user: UserContext = Depends(get_current_user)
 ):
     """
-    Calcula nómina para múltiples empleados con validaciones
+    Calcula nómina para múltiples empleados con validaciones (requiere autenticación JWT)
 
     Args:
         client_id: ID del cliente
         periodo: Período (YYYY-MM)
         employee_ids: Lista de IDs de empleados (opcional)
+        current_user: Usuario autenticado
 
     Returns:
         dict: Lista de cálculos de nómina
     """
     try:
+        logger.info(f"Usuario {current_user.email} calculando nómina en lote para período {periodo}")
+        
         # Validar período
         periodo_valido, msg_periodo = validar_periodo(periodo)
         if not periodo_valido:
@@ -193,6 +206,8 @@ async def calculate_batch_payroll(
         total_bruto = sum(p["total_bruto"] for p in payrolls)
         total_descuentos = sum(p["total_descuentos"] for p in payrolls)
         total_neto = sum(p["neto_a_pagar"] for p in payrolls)
+        
+        logger.info(f"Nómina en lote calculada: {len(payrolls)} empleados por {current_user.email}")
 
         return {
             "success": True,
@@ -206,7 +221,10 @@ async def calculate_batch_payroll(
             }
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error en cálculo batch: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error en cálculo batch: {str(e)}"
@@ -218,31 +236,41 @@ async def get_payroll_history(
     client_id: str,
     employee_id: str = None,
     periodo: str = None,
+    current_user: UserContext = Depends(get_current_user)
 ):
     """
-    Obtiene el historial de nóminas calculadas
+    Obtiene el historial de nóminas calculadas (requiere autenticación JWT)
 
     Args:
         client_id: ID del cliente
         employee_id: Filtro opcional por empleado
         periodo: Filtro opcional por período
+        current_user: Usuario autenticado
 
     Returns:
         dict: Historial de nóminas
     """
     try:
+        logger.info(f"Usuario {current_user.email} consultando historial de nóminas")
+        
         firebase = get_firebase()
 
         payrolls_data = firebase.read_data(f"clients/{client_id}/payroll_history") or {}
 
         # Filtrar resultados
         results = []
-        for payroll in (payrolls_data.values() if isinstance(payrolls_data, dict) else [payrolls_data]):
-            if employee_id and payroll.get("employee_id") != employee_id:
-                continue
-            if periodo and payroll.get("periodo") != periodo:
-                continue
-            results.append(payroll)
+        if isinstance(payrolls_data, dict):
+            for payroll_id, payroll in payrolls_data.items():
+                if not isinstance(payroll, dict):
+                    continue
+                if employee_id and payroll.get("employee_id") != employee_id:
+                    continue
+                if periodo and payroll.get("periodo") != periodo:
+                    continue
+                try:
+                    results.append(payroll)
+                except Exception as e:
+                    logger.warning(f"Error processing payroll record {payroll_id}: {str(e)}")
 
         return {
             "success": True,
@@ -251,6 +279,7 @@ async def get_payroll_history(
         }
 
     except Exception as e:
+        logger.error(f"Error obteniendo historial: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error obteniendo historial: {str(e)}"
@@ -440,7 +469,15 @@ async def list_batches_by_quincena(quincena: str, client_id: str = Query(...)):
         if not batches_data:
             return []
         
-        return [batch for batch in batches_data.values()]
+        batches_list = []
+        if isinstance(batches_data, dict):
+            for batch_id, batch in batches_data.items():
+                if isinstance(batch, dict):
+                    try:
+                        batches_list.append(batch)
+                    except Exception as e:
+                        logger.warning(f"Error processing batch {batch_id}: {str(e)}")
+        return batches_list
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

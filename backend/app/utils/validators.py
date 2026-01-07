@@ -1,53 +1,208 @@
 """
-Validadores de negocio
+✔️ VALIDADORES PROFESIONALES Y AVANZADOS
+Validaciones de seguridad, datos y negocio
 """
 
 import re
-from typing import Tuple
+from typing import Tuple, Optional, Any, Dict
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-def validar_cedula_colombiana(cedula: str) -> Tuple[bool, str]:
-    """
-    Valida una cédula colombiana
+class ValidationResult:
+    """Resultado de validación con estructura profesional"""
+    def __init__(self, is_valid: bool, message: str = "", errors: dict = None):
+        self.is_valid = is_valid
+        self.message = message
+        self.errors = errors or {}
     
-    Args:
-        cedula: Número de cédula
-    
-    Returns:
-        tuple: (es_válida, mensaje_error)
-    """
-    # Remover espacios y caracteres especiales
-    cedula = re.sub(r'\D', '', cedula)
-    
-    if len(cedula) < 5 or len(cedula) > 20:
-        return False, "La cédula debe tener entre 5 y 20 dígitos"
-    
-    if not cedula.isdigit():
-        return False, "La cédula solo puede contener dígitos"
-    
-    return True, "Válido"
+    def __bool__(self):
+        return self.is_valid
 
+
+# ============ VALIDADORES DE EMAIL ============
 
 def validar_email(email: str) -> Tuple[bool, str]:
-    """Valida un email"""
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    """Valida email de forma profesional"""
+    if not email:
+        return False, "Email requerido"
     
-    if not re.match(pattern, email):
-        return False, "Email inválido"
+    email = email.strip().lower()
     
-    return True, "Válido"
+    if len(email) > 254:
+        return False, "Email demasiado largo"
+    
+    # Regex RFC 5322 simplificado
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_regex, email):
+        return False, "Formato de email inválido"
+    
+    # Validar dominios sospechosos
+    suspicious_domains = ['tempmail.', 'throwaway', 'guerrillamail', 'mailinator']
+    if any(domain in email for domain in suspicious_domains):
+        return False, "Email temporal no permitido"
+    
+    return True, "Email válido"
+
+
+# ============ VALIDADORES DE CÉDULA ============
+
+def validar_cedula_colombiana(cedula: str) -> Tuple[bool, str]:
+    """Valida número de cédula colombiana"""
+    if not cedula:
+        return False, "Cédula requerida"
+    
+    cedula = cedula.replace('.', '').replace(',', '').strip()
+    
+    if not cedula.isdigit():
+        return False, "Cédula debe contener solo números"
+    
+    if len(cedula) < 5 or len(cedula) > 11:
+        return False, "Cédula debe tener entre 5 y 11 dígitos"
+    
+    if len(cedula) < 8:
+        return False, "Cédula debe tener mínimo 8 dígitos"
+    
+    return True, "Cédula válida"
+
+
+def validar_cedula(cedula: str, tipo: str = "CC") -> Tuple[bool, str]:
+    """Valida cédula según tipo"""
+    if tipo == "CC":
+        return validar_cedula_colombiana(cedula)
+    
+    if not cedula:
+        return False, "Documento requerido"
+    
+    cedula = cedula.replace('.', '').replace(',', '').strip()
+    
+    if len(cedula) < 5:
+        return False, "Documento inválido"
+    
+    return True, "Documento válido"
+
+
+# ============ VALIDADORES DE EMPLEADO ============
+
+def validar_nombre_empleado(nombre: str) -> Tuple[bool, str]:
+    """Valida nombre de empleado"""
+    if not nombre:
+        return False, "Nombre requerido"
+    
+    nombre = nombre.strip()
+    
+    if len(nombre) < 2:
+        return False, "Nombre debe tener al menos 2 caracteres"
+    
+    if len(nombre) > 100:
+        return False, "Nombre demasiado largo"
+    
+    if not re.match(r"^[a-záéíóúñäëïöüA-ZÁÉÍÓÚÑÄËÏÖÜ\s\-']+$", nombre):
+        return False, "Nombre contiene caracteres no permitidos"
+    
+    return True, "Nombre válido"
+
+
+def validar_tipo_empleado(tipo: str) -> Tuple[bool, str]:
+    """Valida tipo de empleado"""
+    tipos_validos = ["FIJO", "TEMPORAL", "CONTRATISTA"]
+    
+    if tipo not in tipos_validos:
+        return False, f"Tipo debe ser uno de: {', '.join(tipos_validos)}"
+    
+    return True, "Tipo válido"
 
 
 def validar_salario(salario: float, salario_minimo: float = 1000000) -> Tuple[bool, str]:
-    """Valida un salario"""
-    if salario <= 0:
-        return False, "El salario debe ser mayor a 0"
+    """Valida salario"""
+    if salario is None:
+        return False, "Salario requerido"
+    
+    try:
+        salario = float(salario)
+    except (TypeError, ValueError):
+        return False, "Salario debe ser número"
+    
+    if salario < 0:
+        return False, "Salario no puede ser negativo"
+    
+    if salario > 1_000_000_000:
+        return False, "Salario demasiado alto"
     
     if salario < salario_minimo:
-        return False, f"El salario no puede ser menor al mínimo (${salario_minimo:,.0f})"
+        return False, f"Salario no puede ser menor al mínimo (${salario_minimo:,.0f})"
     
-    return True, "Válido"
+    return True, "Salario válido"
+
+
+# ============ VALIDADORES DE HORAS ============
+
+def validar_horas(horas: float) -> Tuple[bool, str]:
+    """Valida cantidad de horas"""
+    if horas is None:
+        return False, "Horas requeridas"
+    
+    try:
+        horas = float(horas)
+    except (TypeError, ValueError):
+        return False, "Horas debe ser número"
+    
+    if horas < 0:
+        return False, "Horas no puede ser negativa"
+    
+    if horas > 24 * 31:
+        return False, "Horas excede límite mensual"
+    
+    return True, "Horas válidas"
+
+
+# ============ VALIDADORES DE CLIENTE ============
+
+def validar_client_id(client_id: str) -> Tuple[bool, str]:
+    """Valida ID del cliente"""
+    if not client_id:
+        return False, "Client ID requerido"
+    
+    client_id = client_id.strip()
+    
+    if len(client_id) < 3:
+        return False, "Client ID debe tener mínimo 3 caracteres"
+    
+    if len(client_id) > 50:
+        return False, "Client ID demasiado largo"
+    
+    if not re.match(r"^[a-zA-Z0-9_-]+$", client_id):
+        return False, "Client ID debe ser alfanumérico"
+    
+    return True, "Client ID válido"
+
+
+# ============ VALIDADORES DE SEGURIDAD ============
+
+def validar_sql_injection(valor: str) -> Tuple[bool, str]:
+    """Detecta posibles intentos de SQL injection"""
+    sql_keywords = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE']
+    valor_upper = str(valor).upper()
+    
+    for keyword in sql_keywords:
+        if keyword in valor_upper:
+            return False, "Valor contiene palabras clave SQL"
+    
+    return True, "Valor seguro"
+
+
+def validar_xss(valor: str) -> Tuple[bool, str]:
+    """Detecta posibles intentos de XSS"""
+    xss_patterns = ['<script', 'javascript:', 'onerror=', 'onload=']
+    valor_lower = str(valor).lower()
+    
+    for pattern in xss_patterns:
+        if pattern in valor_lower:
+            return False, "Valor contiene patrones de XSS"
+    
+    return True, "Valor seguro"
 
 
 def validar_nombre(nombre: str) -> Tuple[bool, str]:
