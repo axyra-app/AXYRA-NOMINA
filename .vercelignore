@@ -1,0 +1,10 @@
+backend/
+.git/
+.env.example
+*.md
+.gitignore
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
