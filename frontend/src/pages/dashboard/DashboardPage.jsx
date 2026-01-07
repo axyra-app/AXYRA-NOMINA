@@ -35,11 +35,11 @@ export default function DashboardPage() {
   const loadStats = async () => {
     try {
       const [empRes, hoursRes, payrollRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_URL}/api/employees`, 
+        axios.get(`${import.meta.env.VITE_API_URL}/employees`, 
           { params: { client_id: 'default-client' } }).catch(() => ({ data: [] })),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/hours`, 
+        axios.get(`${import.meta.env.VITE_API_URL}/hours`, 
           { params: { client_id: 'default-client' } }).catch(() => ({ data: [] })),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/payroll/history`, 
+        axios.get(`${import.meta.env.VITE_API_URL}/payroll/history`, 
           { params: { client_id: 'default-client' } }).catch(() => ({ data: [] }))
       ]);
 

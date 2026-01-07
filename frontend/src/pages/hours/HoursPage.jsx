@@ -39,10 +39,10 @@ export default function HoursPage() {
     try {
       setLoading(true);
       const [empRes, hoursRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_URL}/api/employees`, {
+        axios.get(`${import.meta.env.VITE_API_URL}/employees`, {
           params: { client_id: 'default-client' },
         }),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/hours`, {
+        axios.get(`${import.meta.env.VITE_API_URL}/hours`, {
           params: { client_id: 'default-client' },
         }),
       ]);
@@ -129,14 +129,14 @@ export default function HoursPage() {
     try {
       if (editingId) {
         await axios.put(
-          `${import.meta.env.VITE_API_URL}/api/hours/${editingId}`,
+          `${import.meta.env.VITE_API_URL}/hours/${editingId}`,
           formData,
           { params: { client_id: 'default-client' } }
         );
         setMessage({ type: 'success', text: 'Registro actualizado' });
       } else {
         await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/hours`,
+          `${import.meta.env.VITE_API_URL}/hours`,
           formData,
           { params: { client_id: 'default-client' } }
         );

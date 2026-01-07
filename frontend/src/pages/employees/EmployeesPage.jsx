@@ -32,7 +32,7 @@ export default function EmployeesPage() {
     try {
       setLoading(true);
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/employees`,
+        `${import.meta.env.VITE_API_URL}/employees`,
         { params: { client_id: 'default-client' } }
       );
       setEmployees(response.data || []);
@@ -102,14 +102,14 @@ export default function EmployeesPage() {
     try {
       if (editingId) {
         await axios.put(
-          `${import.meta.env.VITE_API_URL}/api/employees/${editingId}`,
+          `${import.meta.env.VITE_API_URL}/employees/${editingId}`,
           formData,
           { params: { client_id: 'default-client' } }
         );
         setMessage({ type: 'success', text: 'Empleado actualizado' });
       } else {
         await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/employees`,
+          `${import.meta.env.VITE_API_URL}/employees`,
           formData,
           { params: { client_id: 'default-client' } }
         );
@@ -128,7 +128,7 @@ export default function EmployeesPage() {
     if (window.confirm('¿Estás seguro de eliminar este empleado?')) {
       try {
         await axios.delete(
-          `${import.meta.env.VITE_API_URL}/api/employees/${id}`,
+          `${import.meta.env.VITE_API_URL}/employees/${id}`,
           { params: { client_id: 'default-client' } }
         );
         loadEmployees();

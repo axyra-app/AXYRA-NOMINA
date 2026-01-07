@@ -31,7 +31,7 @@ const ConfigurationPage = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/config/system`,
+        `${import.meta.env.VITE_API_URL}/configuration`,
         {
           params: { client_id: 'default-client' },
         }
@@ -72,7 +72,7 @@ const ConfigurationPage = () => {
     try {
       setSaving(true);
       await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/config/company`,
+        `${import.meta.env.VITE_API_URL}/configuration`,
         company,
         { params: { client_id: 'default-client' } }
       );
@@ -90,7 +90,7 @@ const ConfigurationPage = () => {
     try {
       setSaving(true);
       await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/config/hours`,
+        `${import.meta.env.VITE_API_URL}/configuration`,
         hours,
         { params: { client_id: 'default-client' } }
       );
@@ -109,7 +109,7 @@ const ConfigurationPage = () => {
       try {
         setSaving(true);
         await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/config/reset-defaults`,
+          `${import.meta.env.VITE_API_URL}/configuration/reset`,
           {},
           { params: { client_id: 'default-client' } }
         );

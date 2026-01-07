@@ -54,7 +54,7 @@ export const payrollService = {
   // Listar lotes de una quincena
   listBatches: async (clientId, quincena) => {
     const response = await api.get(
-      `/api/payroll/batches/${quincena}`,
+      `/payroll/batches/${quincena}`,
       {
         params: { client_id: clientId }
       }

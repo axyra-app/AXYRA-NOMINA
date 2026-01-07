@@ -23,7 +23,7 @@ export default function PayrollPage() {
   const loadEmployees = async () => {
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/employees`,
+        `${import.meta.env.VITE_API_URL}/employees`,
         { params: { client_id: 'default-client' } }
       );
       setEmployees(response.data || []);
@@ -61,7 +61,7 @@ export default function PayrollPage() {
     try {
       setLoading(true);
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/payroll/calculate/${selectedEmployee.id}`,
+        `${import.meta.env.VITE_API_URL}/payroll/calculate/${selectedEmployee.id}`,
         {},
         {
           params: {
@@ -92,7 +92,7 @@ export default function PayrollPage() {
     try {
       setLoading(true);
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/payroll/batch-calculate`,
+        `${import.meta.env.VITE_API_URL}/payroll/batch-calculate`,
         {},
         {
           params: {
