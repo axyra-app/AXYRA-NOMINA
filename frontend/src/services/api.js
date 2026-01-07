@@ -1,6 +1,11 @@
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// En producción, si no hay VITE_API_URL, usar una URL relativa (mismo dominio)
+const API_URL = import.meta.env.VITE_API_URL || (
+  typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    ? 'http://localhost:8000'
+    : '/api'
+)
 
 const api = axios.create({
   baseURL: API_URL,
