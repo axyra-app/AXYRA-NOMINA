@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Users, Clock, FileText, BarChart3, Zap, Shield, Heart } from 'lucide-react'
+import { Users, Clock, FileText, BarChart3, Zap, Shield } from 'lucide-react'
 
 export default function LandingPage() {
   const navigate = useNavigate()
@@ -197,7 +197,7 @@ export default function LandingPage() {
             </p>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <Heart className="text-red-500" size={20} />
+                <span className="text-red-500 text-xl">❤️</span>
                 <span className="text-gray-700">Diseñado con amor para empresarios</span>
               </div>
               <div className="flex items-center gap-3">
