@@ -3,6 +3,13 @@
   "buildCommand": "npm install && npm run build",
   "outputDirectory": "dist",
   "env": {
-    "VITE_API_URL": "https://axyra-nomina-backend.vercel.app"
+    "VITE_API_URL": "https://axyra-nomina-4o2f.vercel.app",
+    "VITE_FIREBASE_API_KEY": "AIzaSyADX5xPQqJ5J5K5L5M5N5O5P5Q5R5S5T5U",
+    "VITE_FIREBASE_AUTH_DOMAIN": "axyra-nomina.firebaseapp.com",
+    "VITE_FIREBASE_PROJECT_ID": "axyra-nomina",
+    "VITE_FIREBASE_STORAGE_BUCKET": "axyra-nomina.appspot.com",
+    "VITE_FIREBASE_MESSAGING_SENDER_ID": "123456789012",
+    "VITE_FIREBASE_APP_ID": "1:123456789012:web:abcdef1234567890abcdef",
+    "VITE_FIREBASE_DATABASE_URL": "https://axyra-nomina.firebaseio.com"
   }
 }

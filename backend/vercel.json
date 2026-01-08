@@ -22,6 +22,9 @@
     "ENVIRONMENT": "production",
     "ALGORITHM": "HS256",
     "ACCESS_TOKEN_EXPIRE_MINUTES": "30",
-    "ALLOWED_ORIGINS": "https://axyra-nomina.vercel.app"
+    "SECRET_KEY": "axyra-nomina-2025-production-key-secure-change-me-in-production-1234567890abcdefghijklmnopqrstuvwxyz",
+    "ALLOWED_ORIGINS": "https://axyra-nomina.vercel.app",
+    "FIREBASE_DATABASE_URL": "https://axyra-nomina.firebaseio.com",
+    "FIREBASE_PROJECT_ID": "axyra-nomina"
   }
 }
