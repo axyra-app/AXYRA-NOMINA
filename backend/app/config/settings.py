@@ -4,7 +4,7 @@ Gestión centralizada de variables de entorno y configuración profesional
 """
 
 from pydantic_settings import BaseSettings
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from pathlib import Path
 import os
 from typing import Optional, List
@@ -35,11 +35,15 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7, description="Días de expiración del refresh token")
     
     # ============ CORS ============
-    ALLOWED_ORIGINS: List[str] = Field(
-        default=["http://localhost:3000", "http://localhost:5173"],
-        description="Orígenes permitidos"
+    ALLOWED_ORIGINS_STR: str = Field(
+        default="http://localhost:3000,http://localhost:5173",
+        description="Orígenes permitidos (separados por comas)"
     )
     CORS_ALLOW_CREDENTIALS: bool = Field(default=True, description="Permitir credenciales en CORS")
+    
+    @property
+    def ALLOWED_ORIGINS(self) -> List[str]:
+        return [origin.strip() for origin in self.ALLOWED_ORIGINS_STR.split(",")]
     CORS_ALLOW_METHODS: List[str] = Field(
         default=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         description="Métodos HTTP permitidos"
@@ -56,15 +60,17 @@ class Settings(BaseSettings):
     LOG_FILE: Optional[str] = Field(default="logs/app.log", description="Archivo de log")
     
     # ============ VALIDACIONES ============
-    @validator('DEBUG')
-    def validate_debug_production(cls, v, values):
+    @field_validator('DEBUG')
+    @classmethod
+    def validate_debug_production(cls, v, info):
         """Evita DEBUG=True en producción"""
-        env = values.get('ENVIRONMENT', 'development')
+        env = info.data.get('ENVIRONMENT', 'development')
         if v and env == 'production':
             raise ValueError("❌ DEBUG no puede ser True en PRODUCCIÓN")
         return v
     
-    @validator('SECRET_KEY')
+    @field_validator('SECRET_KEY')
+    @classmethod
     def validate_secret_key(cls, v):
         """Valida que SECRET_KEY sea suficientemente fuerte"""
         if len(v) < 32:
@@ -73,15 +79,8 @@ class Settings(BaseSettings):
             raise ValueError("❌ Debes cambiar SECRET_KEY antes de producción")
         return v
     
-    @validator('ALLOWED_ORIGINS', pre=True)
-    def parse_origins(cls, v):
-        """Parsea string CSV a lista o valida lista"""
-        if isinstance(v, str):
-            origins = [origin.strip() for origin in v.split(',') if origin.strip()]
-            return origins
-        return v if isinstance(v, list) else []
-    
-    @validator('ENVIRONMENT')
+    @field_validator('ENVIRONMENT')
+    @classmethod
     def validate_environment(cls, v):
         """Valida que environment sea válido"""
         valid_envs = ['development', 'staging', 'production']
@@ -89,7 +88,8 @@ class Settings(BaseSettings):
             raise ValueError(f"❌ ENVIRONMENT debe ser uno de: {valid_envs}")
         return v.lower()
     
-    @validator('FIREBASE_DATABASE_URL')
+    @field_validator('FIREBASE_DATABASE_URL')
+    @classmethod
     def validate_firebase_url(cls, v):
         """Valida formato de URL Firebase"""
         if v and not v.endswith('.firebaseio.com'):

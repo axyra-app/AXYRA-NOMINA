@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mail, Lock, AlertCircle, Eye, EyeOff, FileText, ArrowLeft, User, CheckCircle2 } from 'lucide-react'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '../../services/firebase'
 import { useAuthStore } from '../../context/store'
+import { apiWithRetry } from '../../services/api'
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { auth } from '../../services/firebase'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -76,8 +77,8 @@ export default function RegisterPage() {
         return
       }
 
-      if (password.length < 6) {
-        setError('La contraseña debe tener al menos 6 caracteres')
+      if (password.length < 8) {
+        setError('La contraseña debe tener al menos 8 caracteres')
         setLoading(false)
         return
       }
@@ -88,15 +89,36 @@ export default function RegisterPage() {
         return
       }
 
-      // Crear usuario en Firebase
+      // Step 1: Create user in Firebase first
+      console.log('Creando usuario en Firebase...')
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-      const token = await userCredential.user.getIdToken()
+      const firebaseUser = userCredential.user
+
+      // Step 2: Update Firebase profile with display name
+      if (firebaseUser) {
+        await updateProfile(firebaseUser, { displayName: nombre })
+      }
+
+      // Step 3: Register in backend to get JWT token
+      console.log('Registrando en backend...')
+      const response = await apiWithRetry('POST', '/api/auth/signup', {
+        data: {
+          email,
+          password,
+          display_name: nombre
+        }
+      }, 3, 1000)
+
+      const { access_token, uid } = response.data
+
+      // Guardar token en localStorage
+      localStorage.setItem('authToken', access_token)
 
       // Actualizar el store de autenticación
-      setToken(token)
+      setToken(access_token)
       setUser({
-        email: userCredential.user.email,
-        uid: userCredential.user.uid,
+        email: email,
+        uid: uid || firebaseUser.uid,
         displayName: nombre
       })
 
@@ -104,11 +126,19 @@ export default function RegisterPage() {
     } catch (err) {
       let errorMsg = 'Error al registrarse'
 
+      // Firebase errors
       if (err.code === 'auth/email-already-in-use') {
         errorMsg = 'Este email ya está registrado'
       } else if (err.code === 'auth/weak-password') {
         errorMsg = 'La contraseña es muy débil'
       } else if (err.code === 'auth/invalid-email') {
+        errorMsg = 'Email inválido'
+      } else if (err.response?.status === 409) {
+        errorMsg = 'Este email ya está registrado en el backend'
+      } else if (err.response?.status === 422) {
+        errorMsg = err.response?.data?.detail || 'Datos inválidos'
+      } else if (err.response?.status === 400) {
+        errorMsg = err.response?.data?.detail || 'Error en el registro'
         errorMsg = 'Email inválido'
       }
 

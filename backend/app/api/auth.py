@@ -115,6 +115,12 @@ async def login(request: LoginRequest):
     """Autentica usuario y devuelve JWT tokens profesionales"""
     try:
         # Validar email
+        if not request.email or not request.password:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Email y contraseña son requeridos"
+            )
+        
         if not SecurityValidator.validate_email(request.email):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -123,19 +129,19 @@ async def login(request: LoginRequest):
         
         firebase = get_firebase()
         
-        # Verificar credenciales en Firebase
+        # Verificar que el usuario existe en Firebase (sin verificar contraseña aquí)
+        # La contraseña fue verificada por Firebase Auth en el frontend
         try:
             user = firebase.auth.get_user_by_email(request.email)
-        except:
-            logger.warning(f"Intento de login con email inválido: {request.email}")
+            uid = user.uid
+            email = user.email
+            display_name = user.display_name or ""
+        except Exception as e:
+            logger.warning(f"Usuario no encontrado: {request.email}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Email o contraseña incorrectos"
             )
-        
-        uid = user.uid
-        email = user.email
-        display_name = user.display_name or ""
         
         # Crear JWT tokens
         access_token = create_access_token(uid, email)

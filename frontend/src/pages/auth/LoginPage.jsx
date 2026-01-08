@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mail, Lock, AlertCircle, Eye, EyeOff, FileText, ArrowLeft } from 'lucide-react'
+import { useAuthStore } from '../../context/store'
+import { apiWithRetry } from '../../services/api'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../../services/firebase'
-import { useAuthStore } from '../../context/store'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -26,16 +27,26 @@ export default function LoginPage() {
         return
       }
 
-      // Iniciar sesión con Firebase
+      // Paso 1: Verificar credenciales con Firebase
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      const token = await userCredential.user.getIdToken()
+      const firebaseToken = await userCredential.user.getIdToken()
+      
+      // Paso 2: Llamar al backend para obtener JWT
+      const response = await apiWithRetry('POST', '/api/auth/login', {
+        data: { email, password }
+      }, 3, 1000)
+      
+      const { access_token, uid, display_name } = response.data
+      
+      // Guardar token en localStorage
+      localStorage.setItem('authToken', access_token)
       
       // Actualizar el store de autenticación
-      setToken(token)
+      setToken(access_token)
       setUser({
-        email: userCredential.user.email,
-        uid: userCredential.user.uid,
-        displayName: userCredential.user.displayName || email.split('@')[0]
+        email: email,
+        uid: uid,
+        displayName: display_name || email.split('@')[0]
       })
       
       navigate('/dashboard')
@@ -48,6 +59,14 @@ export default function LoginPage() {
         errorMsg = 'Contraseña incorrecta'
       } else if (err.code === 'auth/invalid-email') {
         errorMsg = 'Email inválido'
+      } else if (err.response?.status === 401) {
+        errorMsg = 'Email o contraseña incorrectos'
+      } else if (err.response?.status === 422) {
+        errorMsg = err.response?.data?.detail || 'Datos inválidos'
+      } else if (err.code === 'ECONNREFUSED') {
+        errorMsg = 'No se puede conectar al servidor'
+      } else if (err.message === 'No hay conexión con el servidor') {
+        errorMsg = 'Sin conexión con el servidor'
       } else if (err.code === 'auth/user-disabled') {
         errorMsg = 'Usuario deshabilitado'
       }
