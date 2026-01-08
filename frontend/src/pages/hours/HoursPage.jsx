@@ -257,7 +257,7 @@ export default function HoursPage() {
               </div>
 
               {/* Date and Period */}
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Fecha
@@ -288,7 +288,7 @@ export default function HoursPage() {
               {/* Hours Input */}
               <div className="border-t pt-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Registro de Horas</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
                     { label: 'Horas Ordinarias', name: 'horas_ordinarias' },
                     { label: 'Recargo Nocturno', name: 'recargo_nocturno' },
@@ -321,7 +321,7 @@ export default function HoursPage() {
               {/* Debt Information */}
               <div className="border-t pt-6 bg-orange-50 p-4 rounded-lg">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Información de Deuda</h3>
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Motivo de Deuda

@@ -189,7 +189,7 @@ const ConfigurationPage = () => {
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             <h2 className="text-2xl font-bold mb-6 text-gray-900">Información de la Empresa</h2>
 
-            <div className="grid grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Nombre Empresa
@@ -229,7 +229,7 @@ const ConfigurationPage = () => {
 
             <h3 className="text-xl font-bold mb-4 text-gray-900">Valores Económicos</h3>
 
-            <div className="grid grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Salario Mínimo Legal
@@ -261,7 +261,7 @@ const ConfigurationPage = () => {
 
             <h3 className="text-xl font-bold mb-4 text-gray-900">Descuentos a Empleados</h3>
 
-            <div className="grid grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Descuento Salud (%)

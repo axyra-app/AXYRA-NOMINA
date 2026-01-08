@@ -218,7 +218,7 @@ export default function EmployeesPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nombre Completo
@@ -276,7 +276,7 @@ export default function EmployeesPage() {
                   />
                 </div>
 
-                <div className="col-span-2">
+                <div className="col-span-1 md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Comentarios (Opcional)
                   </label>
@@ -294,7 +294,7 @@ export default function EmployeesPage() {
                 {formData.tipo === 'FIJO' ? (
                   <>
                     <h3 className="font-bold text-gray-900 mb-4">Deducciones</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <label className="flex items-center gap-2">
                         <input
                           type="checkbox"
