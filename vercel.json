@@ -1,5 +1,6 @@
 {
-  "buildCommand": "cd frontend && npm install && npm run build",
+  "version": 2,
+  "buildCommand": "npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "env": {
     "VITE_API_URL": "https://axyra-nomina-backend.vercel.app"
